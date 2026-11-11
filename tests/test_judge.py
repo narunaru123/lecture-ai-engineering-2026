@@ -68,3 +68,15 @@ def test_judge_pipeline_with_fake_model():
     assert summary["coverage"]["covered"] + len({r["id"] for r in summary["review"]}) == 10
     for m in summary["mismatches"]:
         assert m["kind"] in ("見逃し", "過検出")
+
+
+def test_judge_cases_can_pause_after_a_batch(monkeypatch):
+    cases = read_jsonl(DEFAULT_CASES)[:6]
+    agent = build_judge(build_test_model(), DEFAULT_RUBRIC.read_text(encoding="utf-8"))
+    sleeps = []
+    monkeypatch.setattr(judge.time, "sleep", sleeps.append)
+
+    verdicts = judge_cases(agent, cases, wait=10, pause_after=5, pause_seconds=60)
+
+    assert set(verdicts) == {case["id"] for case in cases}
+    assert sleeps == [10, 10, 10, 10, 60, 10]
