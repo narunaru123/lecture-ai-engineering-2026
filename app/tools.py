@@ -82,7 +82,6 @@ def get_lecture_summary(lecture: int) -> str:
     return path.read_text(encoding="utf-8")
 
 
-<<<<<<< HEAD
 def search_materials(query: str) -> str:
     """第1〜3回の本講義資料を検索し、関連ページの本文・タイトル・ページ番号を返す。
 
@@ -128,23 +127,3 @@ def search_graph(query: str) -> str:
         return json.dumps({"error": str(e)}, ensure_ascii=False)
     except APIError as e:
         return json.dumps({"error": api_error_message(e.code)}, ensure_ascii=False)
-=======
-def make_quiz(lecture: int) -> str:
-    """指定した回の用語集から確認問題を1問作り、問題と答えを返す。
-
-    「第3回の確認問題を出して」のように、講義内容のクイズを求められたときに使う。
-    問題は用語の意味を尋ねる形式で、返された答えは採点用に使う。
-    """
-    terms = [entry for entry in load_glossary() if entry["lecture"] == lecture]
-    if not terms:
-        return f"第{lecture}回の用語は用語集にありません。"
-
-    entry = random.choice(terms)
-    return json.dumps(
-        {
-            "question": f"「{entry['term']}」の意味は何ですか？",
-            "answer": entry["definition"],
-        },
-        ensure_ascii=False,
-    )
->>>>>>> f5b52223cddda234d6b5de0ae5d9121c1870b24c
