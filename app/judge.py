@@ -188,11 +188,17 @@ def build_test_model() -> FunctionModel:
 
 
 # ---------------------------------------------------------------- 採点と集計
-def judge_cases(agent: Agent, cases: list[dict], wait: float = 0.0) -> dict[str, dict]:
+def judge_cases(
+    agent: Agent,
+    cases: list[dict],
+    wait: float = 0.0,
+    pause_after: int | None = None,
+    pause_seconds: float = 0.0,
+) -> dict[str, dict]:
     """評価セットを 1 件ずつ採点する。戻り値は id → {基準: {reason, verdict}}。"""
     verdicts: dict[str, dict] = {}
     print(f"採点中 {len(cases)} 件 ", end="", flush=True)
-    for case in cases:
+    for i, case in enumerate(cases, start=1):
         result = agent.run_sync(judge_prompt(case))
         out: JudgeResult = result.output
         verdicts[case["id"]] = {key: getattr(out, key).model_dump() for key, _ in LLM_CRITERIA}
@@ -201,7 +207,10 @@ def judge_cases(agent: Agent, cases: list[dict], wait: float = 0.0) -> dict[str,
             "verdict": check_lecture_mark(case["answer"]),
         }
         print(".", end="", flush=True)
-        if wait:
+        if pause_after == i and pause_seconds:
+            print(f" {i}件完了。{pause_seconds:g}秒待機します。", flush=True)
+            time.sleep(pause_seconds)
+        elif wait:
             time.sleep(wait)
     print()
     return verdicts
@@ -329,9 +338,15 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT, help="採点結果の保存先（json）")
     parser.add_argument("--model", default=None, help="採点に使うモデル。既定は AIE_MODEL。'test' で API を呼ばない偽モデル")
     parser.add_argument("--wait", type=float, default=0.0, help="1 件ごとに待つ秒数（レート制限にかかるとき）")
+    parser.add_argument("--pause-after", type=int, help="指定件数の採点後に長い待機を入れる")
+    parser.add_argument("--pause-seconds", type=float, default=0.0, help="--pause-after の後に待つ秒数")
     parser.add_argument("--compare", type=Path, help="LLM を呼ばず、このラベルファイルと --labels の一致率を出す")
     parser.add_argument("--generate", action="store_true", help="評価セットの回答を自分のエージェントで生成し直す（--cases に上書き）")
     args = parser.parse_args(argv)
+    if args.pause_after is not None and args.pause_after < 1:
+        parser.error("--pause-after は 1 以上を指定してください")
+    if args.pause_seconds < 0:
+        parser.error("--pause-seconds は 0 以上を指定してください")
 
     if args.compare:
         mine = load_labels(args.labels)
@@ -366,7 +381,13 @@ def main(argv: list[str] | None = None) -> None:
 
     judge = build_judge(model, rubric)
     try:
-        verdicts = judge_cases(judge, cases, wait=args.wait)
+        verdicts = judge_cases(
+            judge,
+            cases,
+            wait=args.wait,
+            pause_after=args.pause_after,
+            pause_seconds=args.pause_seconds,
+        )
     except ModelHTTPError as e:
         print("\n" + api_error_message(e.status_code, str(e.body)[:200]))
         raise SystemExit(1)
