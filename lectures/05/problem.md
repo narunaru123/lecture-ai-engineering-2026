@@ -65,7 +65,7 @@ uv run python -m app.agent --full-context --trace "$AIE_QUESTION"
 ### STEP 2：検索結果だけを確認する
 
 ```bash
-uv run python -m app.retrieval "LoRA QLoRA 違い"
+on -m app.retrieval "LoRA QLoRA 違い"uv run pyth
 ```
 
 エージェントを使わず、質問に近いページを最大5件取得します。講義名・章・ページタイトル・PDFページ番号・本文が表示されます。
